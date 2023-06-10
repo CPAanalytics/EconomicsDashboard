@@ -27,14 +27,14 @@ series_ids = {
 }
 
 metric = {
-    "GDP": {"balance": "normal", "format": "{:.2f}"},
+    "GDP": {"balance": "normal", "format": "{:,.2f}"},
     "Inflation": {"balance": "inverse", "format": "{:.2f}%"},
     "Unemployment Rate": {"balance": "inverse", "format": "{:.2f}%"},
-    "Real Wages": {"balance": "normal", "format": "{:.2f}"},
+    "Real Wages": {"balance": "normal", "format": "{:,.2f}"},
     "Interest Rates": {"balance": "off", "format": "{:.2f}%"},
-    "Productivity": {"balance": "normal", "format": "{:.2f}"},
-    "Consumer Confidence": {"balance": "normal", "format": "{:.2f}%"},
-    "S&P 500": {"balance": "normal", "format": "{:.2f}"},
+    "Productivity": {"balance": "normal", "format": "{:,.2f}"},
+    "Consumer Confidence": {"balance": "normal", "format": "{:,.2f}"},
+    "S&P 500": {"balance": "normal", "format": "{:,.2f}"},
 }
 
 
@@ -91,7 +91,6 @@ for series_name in series_ids:
     change_num = "{:.2f}%".format( df[f"{series_name} YoY"].iloc[-1])
     st.metric(series_name, base_num, change_num, delta_color=metric[series_name]['balance'], label_visibility='hidden' )
     display_line_chart(series_name, df, [series_name, f"{series_name} MA"])
-
 
 
 
