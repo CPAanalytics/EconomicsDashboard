@@ -46,12 +46,6 @@ indicators = {
         "format": "{:.2f}%",
         "label": "Interest Rates"
     },
-    "Productivity": {
-        "series_id": "OPHNFB",
-        "balance": "normal",
-        "format": "{:,.2f}",
-        "label": "Productivity"
-    },
     "Consumer Confidence": {
         "series_id": "UMCSENT",
         "balance": "normal",
@@ -69,6 +63,12 @@ indicators = {
         "balance": "inverse",
         "format": "{:,.2f}",
         "label": "Recession Prob"
+    },
+    "Recession Shifted": {
+        "series_id": "RECPROUSM156N",
+        "balance": "inverse",
+        "format": "{:,.2f}",
+        "label": "Recession Shifted"
     }
 }
 
@@ -80,33 +80,44 @@ start_date = st.date_input("Start Date", value=datetime.strptime('1980-01-01', '
 end_date = st.date_input("End Date", value=datetime.today(), min_value=datetime.strptime('1980-01-01', '%Y-%m-%d'), max_value=datetime.today())
 
 # Retrieve data from the FRED API for the trailing twelve months on a quarterly basis
-data = {"Date": pd.date_range(start=start_date, end=end_date, freq='Q')}
+data = {"Date": pd.date_range(start=datetime.strptime('1980-01-01', '%Y-%m-%d'), end=datetime.today(), freq='Q')}
 
 for indicator_name, indicator_data in indicators.items():
     try:
-        series_data = fred.get_series(indicator_data["series_id"], start_date=start_date, end_date=end_date)
-        series_data = series_data.resample('Q').last().reindex(data['Date'])
-        data[indicator_name] = series_data
+        if indicator_name == 'Recession Shifted':
+            series_data = fred.get_series(indicator_data["series_id"], start_date=datetime.strptime('1980-01-01', '%Y-%m-%d'), end_date=datetime.today())
+            series_data = series_data.resample('Q').last().reindex(data['Date']).shift(-4)
+            data[indicator_name] = series_data
+        else:
+            series_data = fred.get_series(indicator_data["series_id"], start_date=datetime.strptime('1980-01-01', '%Y-%m-%d'), end_date=datetime.today())
+            series_data = series_data.resample('Q').last().reindex(data['Date'])
+            data[indicator_name] = series_data
     except Exception as e:
         print(f"Error fetching data for {indicator_name}: {e}")
 
 # Create Pandas DataFrame
 df = pd.DataFrame(data)
 
+st.subheader('Recession Correlations')
+st.markdown('Correlations between 1 year shifted in to the past recession indicator and recession indicator since 1980.')
+df_correl = df[[indicator_name for indicator_name in indicators]]
+df_correl = df_correl.corr()
+fig = px.imshow(df_correl[['Recession Shifted', 'Recession Prob']], text_auto=True, width=400, height=800)
+st.plotly_chart(fig)
+
+date_range = pd.date_range(start=start_date, end=end_date, freq='Q')
+plot_df = df[df['Date'].isin(date_range)].copy(deep=True)
+
 # Calculate year-over-year percentage change for each series
 for indicator_name, indicator_data in indicators.items():
-    df[f"{indicator_name} YoY"] = df[indicator_name].pct_change(periods=4) * 100
+    plot_df[f"{indicator_name} YoY"] = df[indicator_name].pct_change(periods=4) * 100
 
 # Calculate 1-year moving average for each series
 for indicator_name, indicator_data in indicators.items():
-    df[f"{indicator_name} 3 Year MA"] = df[indicator_name].rolling(window=12).mean()
-
-for indicator_name, indicator_data in indicators.items():
-    df[f"{indicator_name} 1 Year MA"] = df[indicator_name].rolling(window=4).mean()
-
-# Retrieve data within the selected date range
-date_range = pd.date_range(start=start_date, end=end_date, freq='Q')
-df = df[df['Date'].isin(date_range)]
+    if 'Recession' in indicator_name:
+        continue
+    else:
+        plot_df[f"{indicator_name} 3 Year MA"] = plot_df[indicator_name].rolling(window=12).mean()
 
 # Define function to display KPI indicator
 def display_kpi(title, value, append):
@@ -123,15 +134,21 @@ def display_line_chart(title, data, y_label):
     fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
     st.plotly_chart(fig)
 
+
+
 # Display data for each indicator
 for indicator_name, indicator_data in indicators.items():
-    st.subheader(indicator_data["label"])
-    base_num = indicator_data["format"].format(df[indicator_name].iloc[-1])
-    change_num = "{:.2f}%".format(df[f"{indicator_name} YoY"].iloc[-1])
-    st.metric(indicator_data["label"], base_num, change_num, delta_color=indicator_data['balance'], label_visibility='hidden')
-    display_line_chart(indicator_data["label"], df, [indicator_name, f"{indicator_name} 3 Year MA", f"{indicator_name} 1 Year MA"])
+    if 'Recession Shifted' in indicator_name:
+        continue
+    else:
+        st.subheader(indicator_data["label"])
+        base_num = indicator_data["format"].format(plot_df[indicator_name].iloc[-1])
+        change_num = "{:.2f}%".format(plot_df[f"{indicator_name} YoY"].iloc[-1])
+        st.metric(indicator_data["label"], base_num, change_num, delta_color=indicator_data['balance'], label_visibility='hidden')
 
-df_correl = df[[indicator_name for indicator_name in indicators]]
-df_correl = df_correl.corr()
-fig = px.imshow(df_correl, text_auto=True, width=800, height=800)
-st.plotly_chart(fig)
+        if 'Recession Prob' in indicator_name:
+            display_line_chart(indicator_data["label"], plot_df, [indicator_name])
+        else:
+            display_line_chart(indicator_data["label"], plot_df, [indicator_name, f"{indicator_name} 3 Year MA"])
+
+st.download_button(label='Download Data', data=df.to_csv(), file_name='data.csv')
