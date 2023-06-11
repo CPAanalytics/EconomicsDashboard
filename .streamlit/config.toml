@@ -1,0 +1,30 @@
+[theme]
+primaryColor = "#354CA1"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F9C80E"
+textColor = "#262626"
+font = "sans serif"
+
+[button]
+backgroundColor = "#CC0035"
+textColor = "#FFFFFF"
+
+[sidebar]
+backgroundColor = "#F9C80E"
+textColor = "#262626"
+
+[info]
+backgroundColor = "#59C3C3"
+textColor = "#262626"
+
+[success]
+backgroundColor = "#59C3C3"
+textColor = "#262626"
+
+[warning]
+backgroundColor = "#FF1053"
+textColor = "#262626"
+
+[danger]
+backgroundColor = "#CC0035"
+textColor = "#FFFFFF"
